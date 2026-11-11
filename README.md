@@ -14,7 +14,51 @@ The repository root **is** the plugin folder: the runtime files can be copied as
 
 ## Installation into another project
 
-### Option A — copy the plugin folder
+### Recommended — install from GitHub
+
+Run this in your project root. It installs the plugin as a dev dependency together with its only runtime dependency, `@opencode/plugin`:
+
+```sh
+npm install --save-dev --allow-git=all github:InfiniteFightingGhost/noit-ai-declaration
+```
+
+`--allow-git=all` re-enables git dependencies on recent npm versions, which block them by default (`EALLOWGIT`); older npm versions ignore the flag, so the same command works everywhere (git and network access are required). The package lands at `node_modules/noit-ai-declaration`, and opencode loads the folder through its `package.json` (`"exports": "./index.ts"`).
+
+Then register the installed directory in your project's `opencode.json` (relative paths resolve from the config file that contains them):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    {
+      "package": "./node_modules/noit-ai-declaration",
+      "options": {
+        "backfill": {
+          "scope": "project"
+        }
+      }
+    }
+  ]
+}
+```
+
+`options` from `opencode.json` **are** honored; the full precedence rules are in the [Configuration reference](#configuration-reference).
+
+**Restart opencode.** On first load the plugin creates `.noit/config.json` (the committable base: `project`, `environment`, `export`, `backfill`) and `.noit/config.local.json` (the local overlay: `manual.*`, `participants`), runs a project-scoped reconcile (imports this project's sessions that are not yet in its state), and starts capturing.
+
+### Verify the install
+
+After the restart, run this from your project root — it must print `noit.ai-declaration loaded OK`:
+
+```sh
+node -e "const fs=require('fs');for(const f of ['.noit/config.json','.noit/config.local.json','.noit/ai-log.jsonl','.noit/debug-ctx.json'])if(!fs.existsSync(f))throw new Error('missing '+f);if(!fs.readFileSync('.noit/ai-log.jsonl','utf8').includes('setup noit.ai-declaration@0.1.0'))throw new Error('setup line missing from .noit/ai-log.jsonl');console.log('noit.ai-declaration loaded OK')"
+```
+
+To capture a real session, run one with your default model (`opencode run "Say hi. Do not run tools."` works headless) and then ask the model to call the `noit_status` tool for the full report — project and directory, project id, backfill scope/source, versions, `installedAt`/`lastBackfill`/`imported`, `ses_*.json` count, ai-log entries, record count, export directory. `/noit-status` prints a one-line summary (project, captured session count, last backfill).
+
+### Alternative — vendor the plugin folder
+
+Use this when you prefer the plugin source to live inside your project. The repository root **is** the plugin folder.
 
 1. **Copy the plugin files** into your project so that this path exists:
 
@@ -25,6 +69,8 @@ The repository root **is** the plugin folder: the runtime files can be copied as
    The runtime set is `index.ts`, `config.ts`, `types.ts`, `backfill.ts`, `db.ts`, `export.ts`, `check.ts`, `redact.ts`, `config.template.json`, `config.local.template.json` and `package.json`. Copy the whole repository or only those files — both config templates must ship with the plugin: `config.template.json` seeds the committable base and `config.local.template.json` seeds the local overlay with sane defaults (`provider: "opencode"`, `model: "не се предоставят от доставчика"`, …). If you have this repository cloned, the install script does steps 1–2 for you and prints the `opencode.json` entry for step 3:
 
    ```sh
+   git clone https://github.com/InfiniteFightingGhost/noit-ai-declaration
+   cd noit-ai-declaration
    ./install.ps1 C:\path\to\your-project     # Windows (PowerShell 7+)
    ./install.sh /path/to/your-project        # macOS / Linux (bash)
    ```
@@ -37,7 +83,7 @@ The repository root **is** the plugin folder: the runtime files can be copied as
 
    This repository does not ship a `package-lock.json`; the first `npm install` writes one, and `npm ci` works afterwards for a reproducible install.
 
-3. **Register the plugin** in your project's `opencode.json` — the exact entry used in the original project:
+3. **Register the plugin** in your project's `opencode.json`:
 
    ```json
    {
@@ -48,48 +94,9 @@ The repository root **is** the plugin folder: the runtime files can be copied as
    }
    ```
 
-   Note: `options` from `opencode.json` **are** honored. Configuration precedence, merged key by key (highest first), is: plugin `options` > `.noit/config.local.json` > `.noit/config.json` > `config.template.json` / `config.local.template.json` / built-in defaults. A malformed value is ignored (the lower layer is kept) and logged to `.noit/ai-log.jsonl` as `ignored malformed values: …`. A higher layer **replaces whole arrays** (`export.tools`, `export.records`, `participants`) — there is no per-element merge. Recent opencode versions also auto-discover plugin directories directly under `.opencode/plugins/`, but registering the entry explicitly (as the original project does) is deterministic.
+   Recent opencode versions also auto-discover plugin directories directly under `.opencode/plugins/`, but registering the entry explicitly is deterministic.
 
-4. **Restart opencode.** On first load the plugin creates `.noit/config.json` (the committable base: `project`, `environment`, `export`, `backfill`) and `.noit/config.local.json` (the local overlay: `manual.*`, `participants`), runs a project-scoped reconcile (imports this project's sessions that are not yet in its state), and starts capturing.
-
-5. **Verify it loaded:**
-   - `.noit/config.json`, `.noit/config.local.json` and `.noit/debug-ctx.json` appear in the project root;
-   - `.noit/ai-log.jsonl` gets a line `setup noit.ai-declaration@0.1.0 for <project>`;
-   - `/noit-status` prints a one-line summary (project, captured session count, last backfill); ask the model to call the `noit_status` tool for the full report — project and directory, project id, backfill scope/source, versions, `installedAt`/`lastBackfill`/`imported`, `ses_*.json` count, ai-log entries, record count, export directory.
-
-### Option B — install as a local npm package
-
-Use this when you want the plugin tracked in your project's `package.json` and lockfile.
-
-1. **Install the package** from your project root (this repository is not published to npm, so point npm at this folder):
-
-   ```sh
-   npm install --save-dev file:<path-to-this-repository>
-   ```
-
-   npm installs the plugin as `node_modules/noit-ai-declaration` together with its dependency (`@opencode/plugin`). Once the repository is on GitHub, `npm install --save-dev github:InfiniteFightingGhost/noit-ai-declaration` installs from git instead; if it is ever published to npm, `npm install --save-dev noit-ai-declaration`.
-
-2. **Register the installed directory** in your project's `opencode.json` (relative paths resolve from the config file that contains them, and opencode loads a plugin directory through its `package.json` — this package declares `"exports": "./index.ts"`):
-
-   ```json
-   {
-     "$schema": "https://opencode.ai/config.json",
-     "plugins": [
-       {
-         "package": "./node_modules/noit-ai-declaration",
-         "options": {
-           "backfill": {
-             "scope": "project"
-           }
-         }
-       }
-     ]
-   }
-   ```
-
-   The `options` note from Option A step 3 applies here as well. If the package is ever published to npm you can register it by name instead — `"package": "noit-ai-declaration"` — or add it with `opencode plugin add noit-ai-declaration` / `opencode plugin add github:InfiniteFightingGhost/noit-ai-declaration`.
-
-3. **Restart opencode and verify it loaded** — the same checks as Option A step 5.
+4. **Restart opencode and verify** — same as [Verify the install](#verify-the-install).
 
 ## Quick start
 
