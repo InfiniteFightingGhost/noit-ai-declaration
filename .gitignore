@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Local NOIT capture data — never commit
+.noit/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local config backups
+*.bak
+*.backup
+*.orig
+config.backup.json

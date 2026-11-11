@@ -1,0 +1,32 @@
+{
+  "name": "noit-ai-declaration",
+  "version": "0.1.0",
+  "description": "opencode plugin that generates the Bulgarian НОИТ declaration «ДЕКЛАРАЦИЯ за използване на средства с изкуствен интелект (ИИ)» (Приложение 5) from real opencode session logs.",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "exports": "./index.ts",
+  "files": [
+    "index.ts",
+    "config.ts",
+    "types.ts",
+    "backfill.ts",
+    "db.ts",
+    "export.ts",
+    "check.ts",
+    "redact.ts",
+    "config.template.json",
+    "config.local.template.json",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+  ],
+  "dependencies": {
+    "@opencode/plugin": "2.2.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/InfiniteFightingGhost/noit-ai-declaration.git"
+  },
+  "author": "InfiniteFightingGhost"
+}
